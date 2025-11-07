@@ -1,6 +1,7 @@
 # json_loader.py
 import json
 from typing import Optional, Tuple, Dict, Any, List
+from src.models.star import Star
 
 def load_constellations(filepath: str, graph: Optional[object] = None
                         ) -> Tuple[Dict[int, dict], List[dict], dict, Optional[object]]:
@@ -32,16 +33,32 @@ def load_constellations(filepath: str, graph: Optional[object] = None
 
             # Propiedades básicas de la estrella
             coords = s.get("coordenates", {})
+            x = coords.get("x", 0)
+            y = coords.get("y", 0)
+            
+            # Crear objeto Star con todas las propiedades
+            star_obj = Star(
+                star_id=sid,
+                name=s.get("label", f"Star-{sid}"),
+                x=x,
+                y=y,
+                time_to_eat_kg=s.get("timeToEat", 1.0),
+                energy_cost_research=s.get("amountOfEnergy", 0.5),
+                health_impact=s.get("healthImpact", 0),  # Si no está en JSON, usa 0
+                lifespan_change=s.get("lifespanChange", 0),  # Si no está en JSON, usa 0
+                is_hypergiant=bool(s.get("hypergiant", False)),
+                max_stay_time=s.get("maxStayTime", 100)  # Si no está en JSON, usa 100
+            )
+            
+            # Información adicional para la GUI y el grafo
             star_info = {
                 "id": sid,
+                "star_object": star_obj,  # ← NUEVO: guardamos el objeto Star
                 "label": s.get("label"),
                 "radius": s.get("radius"),
-                "timeToEat": s.get("timeToEat"),
-                "amountOfEnergy": s.get("amountOfEnergy"),
-                "coordenates": {"x": coords.get("x", 0), "y": coords.get("y", 0)},
-                "hypergiant": bool(s.get("hypergiant", False)),
-                "linkedTo": s.get("linkedTo", []),   # lista tal cual, útil para dibujar aristas
-                "constellations": [c_name],          # iremos acumulando nombres si la estrella aparece en varias constelaciones
+                "coordenates": {"x": x, "y": y},
+                "linkedTo": s.get("linkedTo", []),
+                "constellations": [c_name],
             }
 
             # Si ya existe la estrella (misma id), actualizamos lista de constelaciones y linkedTo
@@ -57,6 +74,8 @@ def load_constellations(filepath: str, graph: Optional[object] = None
                 for new_link in star_info["linkedTo"]:
                     if new_link["starId"] not in existing_link_ids:
                         existing["linkedTo"].append(new_link)
+                
+                # NO actualizamos el star_object porque es el mismo (mismo ID)
             else:
                 star_map[sid] = star_info
 

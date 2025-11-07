@@ -33,7 +33,8 @@ class Donkey:
         self.energy = initial_energy  # 0-100%
         self.health_state = health_state
         self.grass_kg = grass_kg
-        self.current_age = start_age
+        self.start_age = start_age  # Edad inicial (para algoritmos)
+        self.current_age = start_age  # Edad actual durante el viaje
         self.death_age = death_age
         
         # Historial del viaje

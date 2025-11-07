@@ -2,8 +2,11 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from typing import Optional
 from .canvas import StarMapCanvas
+from .route_controller import RouteController
 from ..models.graphBase import graphBase
 from ..utils.json_loader import load_constellations
+from ..models.star_graph import StarGraph
+from ..models.donkey import Donkey
 
 class MainWindow:
     """
@@ -54,6 +57,9 @@ class MainWindow:
         control_frame = tk.Frame(self.root, bg="#34495e", height=50)
         control_frame.pack(fill=tk.X, padx=10, pady=5)
 
+        #Guardar referencia a control_frame
+        self.control_frame = control_frame
+
         # Botón para cargar JSON
         self.load_button = tk.Button(
             control_frame,
@@ -89,7 +95,11 @@ class MainWindow:
         #Crear el canvas del mapa estelar
         self.canvas = StarMapCanvas(canvas_frame, width=850, height=700)
         self.canvas.pack()
+        
+        # Crear controlador de rutas (Requisito 2) - DESPUÉS de crear canvas y status_label
+        self.route_controller = RouteController(control_frame, self.canvas, self.status_label)
 
+        # PANEL DE INFORMACIÓN
         info_frame = tk.Frame(self.root, bg="#2c3e50", height=100)
         info_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
 
@@ -114,6 +124,8 @@ class MainWindow:
             wraplength=850
         )
 
+        self.info_label.pack(pady=10)
+
     def load_json_file(self):
         """Abre un diálogo para seleccionar archivo JSON y carga los datos
         """
@@ -129,8 +141,7 @@ class MainWindow:
             return
         
         # Actualizar estado
-        self.status_label.config(text=f"Cargando archivo: {file_path.
-        split('/')[-1]}...")
+        self.status_label.config(text=f"Cargando archivo: {file_path.split('/')[-1]}...")
         self.root.update()
 
         #Intentar cargar el archivo
@@ -167,6 +178,19 @@ class MainWindow:
         
         # Actualizar información
         self._update_info_panel()
+
+        # Crear StarGraph y Donkey para pasar al RouteController
+        star_graph = StarGraph(self.graph, self.star_map)
+        donkey = Donkey(
+            initial_energy=self.burro_data["burroenergiaInicial"],
+            health_state=self.burro_data["estadoSalud"],
+            grass_kg=self.burro_data["pasto"],
+            start_age=self.burro_data["startAge"],
+            death_age=self.burro_data["deathAge"]
+        )
+        
+        # Pasar datos al controlador de rutas
+        self.route_controller.load_data(self.star_map, star_graph, donkey)
         
         # Actualizar estado
         filename = file_path.split('/')[-1]
@@ -228,12 +252,13 @@ class MainWindow:
             message
         )
 
-    def main():
-        """Punto de entrada de la aplicación"""
-        root = tk.Tk()
-        app = MainWindow(root)
-        root.mainloop()
+
+def main():
+    """Punto de entrada de la aplicación"""
+    root = tk.Tk()
+    app = MainWindow(root)
+    root.mainloop()
 
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()

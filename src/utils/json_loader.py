@@ -1,6 +1,7 @@
 # json_loader.py
 import json
 from typing import Optional, Tuple, Dict, Any, List
+from ..models.star import Star
 
 def load_constellations(filepath: str, graph: Optional[object] = None
                         ) -> Tuple[Dict[int, dict], List[dict], dict, Optional[object]]:
@@ -32,8 +33,18 @@ def load_constellations(filepath: str, graph: Optional[object] = None
 
             # Propiedades básicas de la estrella
             coords = s.get("coordenates", {})
+            
+            # Crear objeto Star
+            star_object = Star(
+                star_id=sid,
+                name=s.get("label", f"Star-{sid}"),
+                x=coords.get("x", 0),
+                y=coords.get("y", 0)
+            )
+            
             star_info = {
                 "id": sid,
+                "name": s.get("label", f"Star-{sid}"),
                 "label": s.get("label"),
                 "radius": s.get("radius"),
                 "timeToEat": s.get("timeToEat"),
@@ -42,6 +53,7 @@ def load_constellations(filepath: str, graph: Optional[object] = None
                 "hypergiant": bool(s.get("hypergiant", False)),
                 "linkedTo": s.get("linkedTo", []),   # lista tal cual, útil para dibujar aristas
                 "constellations": [c_name],          # iremos acumulando nombres si la estrella aparece en varias constelaciones
+                "star_object": star_object           # Objeto Star para uso conveniente
             }
 
             # Si ya existe la estrella (misma id), actualizamos lista de constelaciones y linkedTo

@@ -120,30 +120,82 @@ class Donkey:
         
         return True
     
-    def do_research(self, time_spent, energy_cost_per_time):
+    def do_research(self, time_spent, energy_cost_per_time, health_effect=0, life_effect=0):
         """
-        Realiza investigación en una estrella, consume energía.
+        Realiza investigación en una estrella.
         
         Args:
             time_spent: Tiempo invertido en investigación
             energy_cost_per_time: Energía consumida por unidad de tiempo
+            health_effect: Cambio en salud (+mejora, -empeora) - nuevo parámetro
+            life_effect: Años luz ganados (+) o perdidos (-) - nuevo parámetro
             
         Returns:
-            bool: True si completó la investigación, False si se quedó sin energía
+            dict con información: {
+                "success": bool,
+                "energy_consumed": float,
+                "health_effect": int,
+                "life_effect": float,
+                "new_health_state": str,
+                "new_age": float
+            }
         """
+
+        # Guardar estados anteriores
+        old_age = self.current_age
+        old_health = self.health_state
+
+        #Cálculo y consumo de energía
         energy_consumed = time_spent * energy_cost_per_time
         self.energy -= energy_consumed
-        
+
+        #Aplicar efecto en vida
+        self.current_age += life_effect
+
         # Si la energía llega a 0 o menos, el burro muere
         if self.energy <= 0:
             self.energy = 0
             self.health_state = "Muerto"
-            return False
+            return {
+                "success": False,
+                "energy_consumed": energy_consumed,
+                "health_effect": health_effect,
+                "life_effect": life_effect,
+                "new_health_state": "Muerto",
+                "new_age": self.current_age,
+                "death_reason": "Energía agotada"
+            }
+        
+        # Verificar si murió de viejo
+        if self.current_age >= self.death_age:
+            self.health_state = "Muerto"
+            return{
+                "success": False,
+                "energy_consumed": energy_consumed,
+                "health_effect": health_effect,
+                "life_effect": life_effect,
+                "new_health_state": "Muerto",
+                "new_age": self.current_age,
+                "death_reason": "Muerte por vejez"
+            }
         
         # Actualizar estado de salud según energía
         self._update_health_state()
+
+        #Efecto de salud gracias a la investigación
+        if health_effect != 0:
+            self._apply_health_effect(health_effect)
         
-        return True
+        return {
+            "success": True,
+            "energy_consumed": energy_consumed,
+            "health_effect": health_effect,
+            "life_effect": life_effect,
+            "new_health_state": self.health_state,
+            "new_age": self.current_age,
+            "old_health": old_health,
+            "old_age": old_age
+        }
     
     def visit_star(self, star_id):
         """Registra la visita a una estrella"""
@@ -189,6 +241,35 @@ class Donkey:
             self.health_state = "Moribundo"
         else:
             self.health_state = "Muerto"
+
+    def _apply_health_effect(self, health_effect):
+        """
+        Aplica efectos de salud por investigación (enfermedades o mejoras).
+        
+        Args:
+            health_effect: Niveles a cambiar (-2, -1, +1, +2)
+        """
+        # Mapa de estados de salud (orden de peor a mejor)
+        health_order = ["Muerto", "Moribundo", "Mala", "Buena", "Excelente"]
+        
+        # Encontrar índice actual
+        try:
+            current_index = health_order.index(self.health_state)
+        except ValueError:
+            return  # Estado no válido
+        
+        # Calcular nuevo índice
+        new_index = current_index + health_effect
+        
+        # Limitar al rango válido
+        new_index = max(0, min(len(health_order) - 1, new_index))
+        
+        # Aplicar nuevo estado
+        self.health_state = health_order[new_index]
+        
+        # Si llega a "Muerto", ajustar energía
+        if self.health_state == "Muerto":
+            self.energy = 0
     
     def get_report(self):
         """

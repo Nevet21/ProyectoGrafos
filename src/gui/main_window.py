@@ -129,9 +129,8 @@ class MainWindow:
             return
         
         # Actualizar estado
-        self.status_label.config(text=f"Cargando archivo: {file_path.
-        split('/')[-1]}...")
-        self.root.update()
+        self.status_label.config(text=f"Cargando archivo: {file_path.split('/')[-1]}...")
+
 
         #Intentar cargar el archivo
         try:

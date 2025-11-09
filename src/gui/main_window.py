@@ -2,8 +2,12 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from typing import Optional
 from .canvas import StarMapCanvas
+from .route_controller import RouteController
+from .research_config_panel import ResearchConfigPanel
 from ..models.graphBase import graphBase
 from ..utils.json_loader import load_constellations
+from ..models.star_graph import StarGraph
+from ..models.donkey import Donkey
 
 class MainWindow:
     """
@@ -21,7 +25,7 @@ class MainWindow:
 
         self.root = root
         self.root.title("🌟 NASA - Mapa Estelar de Constelaciones")
-        self.root.geometry("900x950")
+        self.root.geometry("900x1100")  # Aumentado de 950 a 1100
         self.root.configure(bg="#1a1a1a")
 
         # Datos cargados inicialmente (inicia con None)
@@ -29,15 +33,38 @@ class MainWindow:
         self.constellations = None
         self.burro_data = None
         self.graph = None
+        
+        # Controladores (se inicializarán después de crear widgets)
+        self.route_controller = None
+        self.research_config_panel = None
 
         #Crear interfaz
         self._create_widgets()
 
     def _create_widgets(self):
         """Crea los widgets de la interfaz."""
+        
+        # Crear canvas principal con scrollbar para toda la ventana
+        main_canvas = tk.Canvas(self.root, bg="#1a1a1a")
+        scrollbar = tk.Scrollbar(self.root, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = tk.Frame(main_canvas, bg="#1a1a1a")
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        main_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Usar scrollable_frame como contenedor principal
+        container = scrollable_frame
 
         # Header con título
-        header_frame = tk.Frame(self.root, bg="#2c3e50", height=60)
+        header_frame = tk.Frame(container, bg="#2c3e50", height=60)
         header_frame.pack(fill=tk.X, padx=10, pady=(10, 0))
         header_frame.pack_propagate(False)
 
@@ -51,8 +78,11 @@ class MainWindow:
         title_label.pack(pady=15)
 
         # PANEL DE CONTROLES
-        control_frame = tk.Frame(self.root, bg="#34495e", height=50)
+        control_frame = tk.Frame(container, bg="#34495e", height=50)
         control_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        #Guardar referencia a control_frame
+        self.control_frame = control_frame
 
         # Botón para cargar JSON
         self.load_button = tk.Button(
@@ -83,14 +113,26 @@ class MainWindow:
         self.status_label.pack(side=tk.LEFT, padx=10)
 
         # CANVAS PARA EL MAPA
-        canvas_frame = tk.Frame(self.root, bg="#1a1a1a")
+        canvas_frame = tk.Frame(container, bg="#1a1a1a")
         canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         #Crear el canvas del mapa estelar
-        self.canvas = StarMapCanvas(canvas_frame, width=850, height=700)
+        self.canvas = StarMapCanvas(canvas_frame, width=850, height=500)
         self.canvas.pack()
+        
+        # Frame para paneles de requisitos (Req 2 y Req 3)
+        requirements_frame = tk.Frame(container, bg="#34495e")
+        requirements_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Crear controlador de rutas (Requisito 2)
+        self.route_controller = RouteController(requirements_frame, self.canvas, self.status_label)
+        
+        # Crear panel de configuración de investigación (Requisito 3)
+        # Se inicializa con star_map vacío, se cargará después
+        self.research_config_panel = None  # Se creará después de cargar JSON
 
-        info_frame = tk.Frame(self.root, bg="#2c3e50", height=100)
+        # PANEL DE INFORMACIÓN
+        info_frame = tk.Frame(container, bg="#2c3e50", height=100)
         info_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
 
         #Título del panel
@@ -114,6 +156,8 @@ class MainWindow:
             wraplength=850
         )
 
+        self.info_label.pack(pady=10)
+
     def load_json_file(self):
         """Abre un diálogo para seleccionar archivo JSON y carga los datos
         """
@@ -130,7 +174,7 @@ class MainWindow:
         
         # Actualizar estado
         self.status_label.config(text=f"Cargando archivo: {file_path.split('/')[-1]}...")
-
+        self.root.update()
 
         #Intentar cargar el archivo
         try:
@@ -166,6 +210,25 @@ class MainWindow:
         
         # Actualizar información
         self._update_info_panel()
+
+        # Crear StarGraph y Donkey para pasar al RouteController
+        star_graph = StarGraph(self.graph, self.star_map)
+        donkey = Donkey(
+            initial_energy=self.burro_data["burroenergiaInicial"],
+            health_state=self.burro_data["estadoSalud"],
+            grass_kg=self.burro_data["pasto"],
+            start_age=self.burro_data["startAge"],
+            death_age=self.burro_data["deathAge"]
+        )
+        
+        # Pasar datos al controlador de rutas
+        self.route_controller.load_data(self.star_map, star_graph, donkey)
+        
+        # Crear panel de configuración de investigación si aún no existe
+        if self.research_config_panel is None:
+            # Usar el mismo parent_frame que RouteController
+            requirements_frame = self.route_controller.parent_frame
+            self.research_config_panel = ResearchConfigPanel(requirements_frame, self.star_map)
         
         # Actualizar estado
         filename = file_path.split('/')[-1]
@@ -227,12 +290,13 @@ class MainWindow:
             message
         )
 
-    def main():
-        """Punto de entrada de la aplicación"""
-        root = tk.Tk()
-        app = MainWindow(root)
-        root.mainloop()
+
+def main():
+    """Punto de entrada de la aplicación"""
+    root = tk.Tk()
+    app = MainWindow(root)
+    root.mainloop()
 
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()

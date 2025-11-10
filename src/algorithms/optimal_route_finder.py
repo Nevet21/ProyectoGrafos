@@ -67,6 +67,9 @@ class OptimalRouteFinder:
         initial_donkey = self._clone_donkey(donkey)
         initial_donkey.visit_star(start_star_id)
 
+        # Crear paso inicial (investigación en estrella de inicio)
+        initial_step = simulator.simulate_star_visit(initial_donkey, None, start_star_id)
+
         priority = -(1* 1000) + 0 #Estrella visitada, 0 energía gastada
 
         priority_queue = [(
@@ -76,7 +79,7 @@ class OptimalRouteFinder:
             start_star_id,
             [start_star_id],
             initial_donkey,
-            []
+            [initial_step]  # Incluir el paso inicial
         )]
 
         #Mejor resultado encontrado
@@ -85,7 +88,7 @@ class OptimalRouteFinder:
             "route": [start_star_id],
             "energy_spent": 0,
             "donkey_state": initial_donkey.get_report(),
-            "simulation_steps": []
+            "simulation_steps": [initial_step]  # Incluir el paso inicial
         }
 
         #Set de estados visitados: (star_id, num_visited, energy_spent)

@@ -79,6 +79,16 @@ class RouteSimulator:
 
             if distance is None:
                 result["death_reason"] = "No hay conexión entre estrellas"
+                # Guardar estado del burro
+                result["donkey_state"] = {
+                    "energy": donkey.energy,
+                    "health_state": donkey.health_state,
+                    "grass_kg": donkey.grass_kg,
+                    "current_age": donkey.current_age,
+                    "death_age": donkey.death_age,
+                    "remaining_life": donkey.get_remaining_life(),
+                    "is_alive": donkey.is_alive()
+                }
                 return result
             
             #Consumir años luz al viajar
@@ -91,6 +101,16 @@ class RouteSimulator:
 
             if not travel_success:
                 result["death_reason"] = "El burro murió de anciano"
+                # Guardar estado del burro incluso si murió
+                result["donkey_state"] = {
+                    "energy": donkey.energy,
+                    "health_state": donkey.health_state,
+                    "grass_kg": donkey.grass_kg,
+                    "current_age": donkey.current_age,
+                    "death_age": donkey.death_age,
+                    "remaining_life": donkey.get_remaining_life(),
+                    "is_alive": donkey.is_alive()
+                }
                 return result
             
         #2. Registrar visita de estrella
@@ -100,6 +120,16 @@ class RouteSimulator:
         star_data = self.star_map.get(next_star_id)
         if not star_data:
             result["death_reason"] = "Estrella no encontrada en el mapa"
+            # Guardar estado del burro
+            result["donkey_state"] = {
+                "energy": donkey.energy,
+                "health_state": donkey.health_state,
+                "grass_kg": donkey.grass_kg,
+                "current_age": donkey.current_age,
+                "death_age": donkey.death_age,
+                "remaining_life": donkey.get_remaining_life(),
+                "is_alive": donkey.is_alive()
+            }
             return result
 
         #3. Comer si burro energía < 50%
@@ -144,6 +174,16 @@ class RouteSimulator:
         #Verificar si murió durante la investigación
         if not research_result["success"]:
             result["death_reason"] = research_result.get("death_reason", "El burro murió durante la investigación")
+            # Guardar estado del burro incluso si murió
+            result["donkey_state"] = {
+                "energy": donkey.energy,
+                "health_state": donkey.health_state,
+                "grass_kg": donkey.grass_kg,
+                "current_age": donkey.current_age,
+                "death_age": donkey.death_age,
+                "remaining_life": donkey.get_remaining_life(),
+                "is_alive": donkey.is_alive()
+            }
             return result
         
         #5. Verificar si es hipergigante
@@ -154,9 +194,10 @@ class RouteSimulator:
         #6. Guardar estado final del burro
         result["donkey_state"] = {
             "energy": donkey.energy,
-            "health": donkey.health_state,
+            "health_state": donkey.health_state,  # Cambiado de "health" a "health_state"
             "grass_kg": donkey.grass_kg,
-            "age": donkey.current_age,
+            "current_age": donkey.current_age,    # Cambiado de "age" a "current_age"
+            "death_age": donkey.death_age,         # Agregado para mostrar edad máxima
             "remaining_life": donkey.get_remaining_life(),
             "is_alive": donkey.is_alive()
         }

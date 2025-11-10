@@ -8,6 +8,8 @@ from ..models.graphBase import graphBase
 from ..utils.json_loader import load_constellations
 from ..models.star_graph import StarGraph
 from ..models.donkey import Donkey
+from .simulation_state_panel import SimulationStatePanel
+from .simulation_controller import SimulationController
 
 class MainWindow:
     """
@@ -37,6 +39,8 @@ class MainWindow:
         # Controladores (se inicializarán después de crear widgets)
         self.route_controller = None
         self.research_config_panel = None
+        self.simulation_state_panel = None
+        self.simulation_controller = None
 
         #Crear interfaz
         self._create_widgets()
@@ -126,6 +130,13 @@ class MainWindow:
         
         # Crear controlador de rutas (Requisito 2)
         self.route_controller = RouteController(requirements_frame, self.canvas, self.status_label)
+
+        # Crear panel de estado del burro (Requisito 3)
+        self.simulation_state_panel = SimulationStatePanel(container)
+
+        # Crear controlador de simulación (Requisito 3)
+        # Se inicializará con datos después de cargar JSON
+        self.simulation_controller = None  # Se creará después
         
         # Crear panel de configuración de investigación (Requisito 3)
         # Se inicializa con star_map vacío, se cargará después
@@ -224,11 +235,30 @@ class MainWindow:
         # Pasar datos al controlador de rutas
         self.route_controller.load_data(self.star_map, star_graph, donkey)
         
-        # Crear panel de configuración de investigación si aún no existe
+        # Crear controlador de simulación si aún no existe (PRIMERO)
+        if self.simulation_controller is None:
+            # Usar el mismo container que los otros paneles
+            requirements_frame = self.route_controller.parent_frame
+            self.simulation_controller = SimulationController(
+                requirements_frame,
+                self.canvas,
+                self.simulation_state_panel,
+                self.star_map
+            )
+        
+        # Crear panel de configuración de investigación si aún no existe (DESPUÉS)
         if self.research_config_panel is None:
             # Usar el mismo parent_frame que RouteController
             requirements_frame = self.route_controller.parent_frame
-            self.research_config_panel = ResearchConfigPanel(requirements_frame, self.star_map)
+            self.research_config_panel = ResearchConfigPanel(
+                requirements_frame, 
+                self.star_map,
+                self.canvas,  # Pasar el canvas
+                self.simulation_controller  # Pasar el controlador de simulación (ya existe)
+            )
+        
+        # Cargar datos en el panel de configuración
+        self.research_config_panel.load_data(star_graph, donkey)
         
         # Actualizar estado
         filename = file_path.split('/')[-1]

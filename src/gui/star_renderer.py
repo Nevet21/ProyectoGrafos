@@ -98,15 +98,20 @@ class StarRenderer:
                     tags="connection"
                 )
                 
-                # Opcional: dibujar la distancia en el medio de la línea
+                # Dibujar etiqueta con la distancia en el punto medio de la línea
                 mid_x = (x1 + x2) / 2
                 mid_y = (y1 + y2) / 2
+                
+                # Fondo semitransparente para la etiqueta (rectángulo oscuro)
+                distance_text = f"{distance:.1f}" if isinstance(distance, (int, float)) else str(distance)
+                
+                # Crear texto con fondo para mejor visibilidad
                 self.canvas.create_text(
                     mid_x, mid_y,
-                    text=str(distance),
-                    fill="#7f8c8d",  # Gris claro
-                    font=("Arial", 7),
-                    tags="distance_label"
+                    text=distance_text,
+                    fill="#3498db",  # Azul claro
+                    font=("Arial", 8, "bold"),
+                    tags="connection"
                 )
 
     def draw_stars(self):

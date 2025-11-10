@@ -241,13 +241,13 @@ class StarMapCanvas(tk.Canvas):
         """Elimina la ruta dibujada del canvas"""
         self.delete("route")
 
-    def draw_donkey(self, star_id:int):
+    def draw_donkey(self, star_id: int):
         """
-        Dibuja el ícono del burro en la estrella dada.
+        Dibuja el ícono del burro en la estrella dada con una animación de aparición.
         Args:
             star_id: ID de la estrella donde dibujar el burro
         """
-        #Eliminar el burro anterior
+        # 🧹 Eliminar el burro anterior
         self.delete("donkey")
 
         if star_id not in self.star_map:
@@ -256,9 +256,9 @@ class StarMapCanvas(tk.Canvas):
         star = self.star_map[star_id]
         x, y = self._scale_coords(star["coordenates"]["x"], star["coordenates"]["y"])
 
-        #Por ahora dibuja un burro simple
+        # Dibujar un círculo de fondo (el cuerpo del burro)
         radius = 25
-        self.create_oval(
+        body = self.create_oval(
             x - radius, y - radius,
             x + radius, y + radius,
             fill="#8B4513",  # Marrón
@@ -266,24 +266,122 @@ class StarMapCanvas(tk.Canvas):
             width=3,
             tags="donkey"
         )
-        
-        # Emoji del burro
-        self.create_text(
+
+        # Dibujar el emoji del burro 🐴
+        emoji = self.create_text(
             x, y,
             text="🐴",
             font=("Arial", 30),
             tags="donkey"
         )
-        
-        # Etiqueta "BURRO AQUÍ"
-        self.create_text(
+
+        # Etiqueta superior
+        label = self.create_text(
             x, y - 45,
             text="🐴 BURRO AQUÍ",
             fill="#ffffff",
             font=("Arial", 10, "bold"),
             tags="donkey"
         )
+
+        # ✨ Animación de parpadeo al llegar
+        def blink(times=6):
+            if times <= 0:
+                self.itemconfig(body, state="normal")
+                self.itemconfig(emoji, state="normal")
+                self.itemconfig(label, state="normal")
+                return
+
+            state = "hidden" if times % 2 == 0 else "normal"
+            self.itemconfig(body, state=state)
+            self.itemconfig(emoji, state=state)
+            self.itemconfig(label, state=state)
+            self.after(150, blink, times - 1)
+
+        blink()
+
+    def animate_donkey_move(self, from_star_id: int, to_star_id: int, steps: int = 20, delay: int = 50):
+        """
+        Anima el movimiento del burro desde una estrella a otra.
+        
+        Args:
+            from_star_id: ID de la estrella origen
+            to_star_id: ID de la estrella destino
+            steps: número de frames intermedios (mayor = más suave)
+            delay: tiempo entre frames en milisegundos
+        """
+        if from_star_id not in self.star_map or to_star_id not in self.star_map:
+            return
+
+        star_a = self.star_map[from_star_id]
+        star_b = self.star_map[to_star_id]
+
+        x1, y1 = self._scale_coords(star_a["coordenates"]["x"], star_a["coordenates"]["y"])
+        x2, y2 = self._scale_coords(star_b["coordenates"]["x"], star_b["coordenates"]["y"])
+
+        dx = (x2 - x1) / steps
+        dy = (y2 - y1) / steps
+
+        # Dibujar al burro en la posición inicial
+        self.delete("donkey")
+        donkey = self.create_text(x1, y1, text="🐴", font=("Arial", 30), tags="donkey")
+
+        def move_step(i=0):
+            if i > steps:
+                # Asegurarse de que quede en el destino exacto
+                self.delete("donkey")
+                self.draw_donkey(to_star_id)
+                return
+            
+            self.move("donkey", dx, dy)
+            self.after(delay, move_step, i + 1)
+
+        move_step()
+
     
     def clear_donkey(self):
         """Elimina el ícono del burro del canvas"""
         self.delete("donkey")
+        
+    def highlight_blocked_edges(self, star_graph):
+
+        self.delete("blocked")
+
+        for a, b, _, blocked in star_graph.get_all_edges():
+            if not blocked:
+                continue
+
+            star_a = self.star_map.get(a)
+            star_b = self.star_map.get(b)
+            if not star_a or not star_b:
+                continue
+
+            x1, y1 = self._scale_coords(star_a["coordenates"]["x"], star_a["coordenates"]["y"])
+            x2, y2 = self._scale_coords(star_b["coordenates"]["x"], star_b["coordenates"]["y"])
+
+            self.create_line(
+                x1, y1, x2, y2,
+                fill="red",
+                width=3,
+                dash=(8, 4),
+                tags="blocked"
+            )
+    def highlight_star(self, star_id: int, color="#ffff00"):
+        """
+        Resalta una estrella específica en el mapa con un halo brillante.
+        """
+        if star_id not in self.star_map:
+            return
+
+        star = self.star_map[star_id]
+        x, y = self._scale_coords(star["coordenates"]["x"], star["coordenates"]["y"])
+        radius = star.get("radius", 3) * 3  # un poco más grande que la estrella
+
+        # Dibujar un halo brillante
+        self.create_oval(
+            x - radius, y - radius,
+            x + radius, y + radius,
+            outline=color,
+            width=3,
+            tags=("highlight", f"highlight_{star_id}")
+        )

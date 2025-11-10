@@ -34,16 +34,21 @@ class StarGraph:
 
     def get_neighbors_with_distance(self, star_id: int) -> List[Tuple[int, float]]:
         """
-        Obtiene los vecinos de una estrella con sus distancias.
-
-        Args:
-            star_id: ID de la estrella
-
-        Returns:
-            Lista de tuplas (neighbor_id, distance)
+        Obtiene los vecinos de una estrella con sus distancias, ignorando caminos bloqueados.
         """
         neighbors_dict = self.graph.get_neighbors(star_id)
-        return list(neighbors_dict.items())
+
+        result = []
+        for neighbor_id, edge_data in neighbors_dict.items():
+            # Si el grafo guarda solo la distancia (float), conviértelo en dict
+            if isinstance(edge_data, dict):
+                if not edge_data.get("blocked", False):
+                    result.append((neighbor_id, edge_data.get("distance", 0)))
+            else:
+                # Si solo hay distancia numérica, asumimos que no está bloqueado
+                result.append((neighbor_id, edge_data))
+        return result
+
 
     def get_star(self, star_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -135,3 +140,60 @@ class StarGraph:
             Número de estrellas
         """
         return len(self.star_map)
+    
+        # ==========================================================
+    # 🛰️ NUEVOS MÉTODOS PARA BLOQUEAR Y HABILITAR CAMINOS (Requisito 4)
+    # ==========================================================
+
+    def _init_blocked_edges(self):
+        """Inicializa la estructura de caminos bloqueados (si aún no existe)."""
+        if not hasattr(self, "blocked_edges"):
+            self.blocked_edges = set()
+
+    def set_edge_blocked(self, star_id1: int, star_id2: int, blocked: bool = True):
+        """
+        Bloquea o habilita un camino entre dos estrellas (en ambos sentidos).
+        """
+        self._init_blocked_edges()
+        edge = tuple(sorted((star_id1, star_id2)))
+        if blocked:
+            self.blocked_edges.add(edge)
+        else:
+            self.blocked_edges.discard(edge)
+
+    def is_edge_blocked(self, star_id1: int, star_id2: int) -> bool:
+        """
+        Verifica si una conexión entre dos estrellas está bloqueada.
+        """
+        self._init_blocked_edges()
+        return tuple(sorted((star_id1, star_id2))) in self.blocked_edges
+
+    def get_all_edges(self) -> List[Tuple[int, int, float, bool]]:
+        """
+        Devuelve todas las aristas con su distancia y estado de bloqueo.
+        Compatible con graphBase.adjacency_list.
+        """
+        self._init_blocked_edges()
+        edges = []
+        for a in self.graph.get_vertices():
+            for b, distance in self.graph.get_neighbors(a).items():
+                if a < b:  # Evita duplicados (grafo no dirigido)
+                    blocked = self.is_edge_blocked(a, b)
+                    edges.append((a, b, distance, blocked))
+        return edges
+
+    def get_neighbors_with_distance(self, star_id: int) -> List[Tuple[int, float]]:
+        """
+        Obtiene los vecinos de una estrella con sus distancias,
+        ignorando los caminos bloqueados.
+        """
+        self._init_blocked_edges()
+        neighbors_dict = self.graph.get_neighbors(star_id)
+        result = []
+        for neighbor_id, distance in neighbors_dict.items():
+            if not self.is_edge_blocked(star_id, neighbor_id):
+                result.append((neighbor_id, distance))
+        return result
+
+    
+    

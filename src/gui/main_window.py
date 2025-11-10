@@ -123,10 +123,18 @@ class MainWindow:
         #Crear el canvas del mapa estelar
         self.canvas = StarMapCanvas(canvas_frame, width=850, height=500)
         self.canvas.pack()
-        
+
+        # -----------------------
+        # Nuevo: frame para los controles de simulación
+        # Se mostrará justo debajo del canvas (visible mientras se ejecuta)
+        self.sim_controls_frame = tk.Frame(container, bg="#34495e")
+        self.sim_controls_frame.pack(fill=tk.X, padx=10, pady=(5, 10))
+        # -----------------------
+
         # Frame para paneles de requisitos (Req 2 y Req 3)
         requirements_frame = tk.Frame(container, bg="#34495e")
         requirements_frame.pack(fill=tk.X, padx=10, pady=5)
+
         
         # Crear controlador de rutas (Requisito 2)
         self.route_controller = RouteController(requirements_frame, self.canvas, self.status_label)
@@ -219,32 +227,48 @@ class MainWindow:
         # Dibujar el mapa
         self.canvas.draw_map()
         
+        self.canvas.highlight_blocked_edges(StarGraph(self.graph, self.star_map))
+
+        
         # Actualizar información
         self._update_info_panel()
 
+                # Crear StarGraph y Donkey para pasar al RouteController
         # Crear StarGraph y Donkey para pasar al RouteController
         star_graph = StarGraph(self.graph, self.star_map)
+
+        # 🔧 Panel de Control de Caminos
+        from .path_control_panel import PathControlPanel
+        self.path_control_panel = PathControlPanel(self.route_controller.parent_frame, self.canvas, star_graph)
+        self.path_control_panel.pack(fill=tk.X, padx=10, pady=10)
+
         donkey = Donkey(
             initial_energy=self.burro_data["burroenergiaInicial"],
             health_state=self.burro_data["estadoSalud"],
             grass_kg=self.burro_data["pasto"],
             start_age=self.burro_data["startAge"],
             death_age=self.burro_data["deathAge"]
-        )
+)
+
         
         # Pasar datos al controlador de rutas
         self.route_controller.load_data(self.star_map, star_graph, donkey)
         
-        # Crear controlador de simulación si aún no existe (PRIMERO)
+            
+        # Crear controlador de simulación si aún no existe (ahora en sim_controls_frame)
         if self.simulation_controller is None:
-            # Usar el mismo container que los otros paneles
-            requirements_frame = self.route_controller.parent_frame
+            # Usar el frame que está justo debajo del canvas para los controles de simulación
+            parent_for_sim = getattr(self, "sim_controls_frame", None)
+            if parent_for_sim is None:
+                # Fallback: si por alguna razón no existe, usar el requirements_frame
+                parent_for_sim = self.route_controller.parent_frame
             self.simulation_controller = SimulationController(
-                requirements_frame,
+                parent_for_sim,
                 self.canvas,
                 self.simulation_state_panel,
                 self.star_map
             )
+
         
         # Crear panel de configuración de investigación si aún no existe (DESPUÉS)
         if self.research_config_panel is None:

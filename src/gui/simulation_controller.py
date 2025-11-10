@@ -42,6 +42,10 @@ class SimulationController:
         
         # Crear el panel de controles
         self._create_panel()
+        
+        #guardar estrellas 
+        self.visited_stars = []  # Para guardar el orden de estrellas visitadas
+
 
     def _create_panel(self):
         """Crea el panel de controles de simulación"""
@@ -249,7 +253,7 @@ class SimulationController:
     
     def _finish_simulation(self, custom_message: str = None):
         """Finaliza la simulación
-        
+            
         Args:
             custom_message: Mensaje personalizado para mostrar
         """
@@ -261,14 +265,43 @@ class SimulationController:
         
         self.progress_label.config(text="✅ Simulación completada")
         
-        # Validar que hay pasos
+        # 🧩 Validar que hay pasos
         if not self.simulation_steps or len(self.simulation_steps) == 0:
             messagebox.showwarning(
                 "Simulación Vacía",
                 "No hay información de la simulación."
             )
+            # En este caso, no hay nada que reportar, así que terminamos aquí
             return
+
+        # 🧩 Obtener el estado del paso actual o el último
+        if self.current_step_index >= 0 and self.current_step_index < len(self.simulation_steps):
+            current_step = self.simulation_steps[self.current_step_index]
+            donkey_state = current_step.get('donkey_state', {})
+        else:
+            final_step = self.simulation_steps[-1]
+            donkey_state = final_step.get('donkey_state', {})
         
+        # 🧩 Mostrar mensaje final según el estado del burro
+        if donkey_state.get('is_alive'):
+            title = custom_message if custom_message else "✅ Simulación Completada"
+            message = f"¡El burro completó la ruta exitosamente!\n\n" if not custom_message else f"{custom_message}\n\n"
+            messagebox.showinfo(
+                title,
+                f"{message}"
+                f"Energía final: {donkey_state['energy']:.1f}%\n"
+                f"Salud: {donkey_state['health_state']}\n"
+                f"Vida restante: {donkey_state['remaining_life']:.1f} años"
+            )
+        else:
+            messagebox.showerror(
+                "❌ Burro Fallecido",
+                "El burro murió durante el viaje.\n\n"
+                "Causa: Edad máxima alcanzada"
+            )
+
+
+
         # Obtener el estado del paso actual (si llegamos antes del final)
         if self.current_step_index >= 0 and self.current_step_index < len(self.simulation_steps):
             current_step = self.simulation_steps[self.current_step_index]
@@ -294,33 +327,47 @@ class SimulationController:
                 "El burro murió durante el viaje.\n\n"
                 "Causa: Edad máxima alcanzada"
             )
-    
+            # 🧩 Mostrar reporte final (se ejecuta siempre que haya pasos)
+        self.show_final_report()
+        
     def _render_step(self, step: Dict):
         """
         Renderiza un paso de la simulación en el canvas.
-        
-        Args:
-            step: Diccionario con información del paso
         """
         # Obtener datos del paso
         star_id = step.get('star_id')
         donkey_state = step.get('donkey_state', {})
         hypergiant_bonus = step.get('hypergiant_bonus')
         
+        # Registrar la estrella visitada
+        if star_id and star_id not in self.visited_stars:
+            self.visited_stars.append(star_id)
+
         # Actualizar panel de estado
         self.state_panel.update_state(donkey_state, star_id, self.star_map)
-        
-        # Dibujar burro en la estrella actual
+
+        # 🐴 Movimiento del burro
         if star_id and star_id in self.star_map:
-            self.canvas.draw_donkey(star_id)
-        
+            if len(self.visited_stars) > 1:
+                previous_star = self.visited_stars[-2]
+                # Animar movimiento suave entre estrellas
+                self.canvas.animate_donkey_move(previous_star, star_id)
+            else:
+                # Primer paso: solo dibujar sin animación
+                self.canvas.draw_donkey(star_id)
+
+            # Resaltar la estrella actual
+            self.canvas.highlight_star(star_id, color="#ffff00")
+        # ✨ Nuevo resaltado aquí
+
         # Verificar si llegó a una hipergigante
         # Comprobamos tanto por hypergiant_bonus como por la propiedad de la estrella
         star_data = self.star_map.get(star_id, {})
         is_hypergiant = star_data.get('hypergiant', False)
-        
+
         if is_hypergiant and hypergiant_bonus is not None:
             self._handle_hypergigant(star_id, donkey_state)
+
     
     def _handle_hypergigant(self, current_star_id: int, donkey_state: Dict):
         """
@@ -398,3 +445,73 @@ class SimulationController:
             self.is_playing = True
             self.play_button.config(text="⏸️ Pausar", bg="#e67e22")
             self.next_button.config(state=tk.DISABLED)
+    
+    def show_final_report(self):
+        """
+        Muestra un reporte con las estrellas visitadas, consumo y tiempo.
+        """
+        if not self.visited_stars:
+            messagebox.showinfo("Reporte de Viaje", "No hay estrellas visitadas aún.")
+            return
+
+        # Construir texto del reporte
+        report_lines = ["📊 REPORTE FINAL DEL VIAJE", ""]
+
+        total_pasto = 0
+        total_tiempo = 0
+
+        for star_id in self.visited_stars:
+            star = self.star_map.get(star_id, {})
+            name = star.get("label", f"Estrella {star_id}")
+            constellation = star.get("constellation", "Desconocida")
+            time_to_eat = star.get("timeToEat", 0)
+            energy = star.get("amountOfEnergy", 0)
+
+            # Simulamos consumo de pasto estimado y tiempo
+            pasto_consumido = round(time_to_eat * 1.5, 2)
+            tiempo_investigacion = round(time_to_eat * 2, 2)
+
+            total_pasto += pasto_consumido
+            total_tiempo += tiempo_investigacion
+
+            report_lines.append(
+                f"⭐ {name} ({constellation})"
+                f"\n   🌾 Pasto consumido: {pasto_consumido} kg"
+                f"\n   ⏱️ Tiempo investigado: {tiempo_investigacion} h"
+                f"\n   ⚡ Energía estelar: {energy}%\n"
+            )
+
+        report_lines.append(f"-----------------------------------")
+        report_lines.append(f"🌾 Pasto total consumido: {total_pasto:.2f} kg")
+        report_lines.append(f"⏱️ Tiempo total invertido: {total_tiempo:.2f} h")
+        report_lines.append("🐴 Estado final: ver panel lateral")
+
+        # Mostrar reporte en una ventana emergente
+        report_text = "\n".join(report_lines)
+        report_window = tk.Toplevel(self.parent_frame)
+        report_window.title("📋 Reporte Final del Viaje")
+        report_window.configure(bg="#1a1a1a")
+
+        text_widget = tk.Text(
+            report_window,
+            wrap="word",
+            bg="#1a1a1a",
+            fg="#00ffcc",
+            font=("Consolas", 11),
+            height=30,
+            width=70
+        )
+        text_widget.insert("1.0", report_text)
+        text_widget.config(state="disabled")
+        text_widget.pack(padx=20, pady=20)
+
+        tk.Button(
+            report_window,
+            text="Cerrar",
+            command=report_window.destroy,
+            bg="#3498db",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            padx=10,
+            pady=5
+        ).pack(pady=(0, 15))

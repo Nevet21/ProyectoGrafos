@@ -139,3 +139,151 @@ class StarMapCanvas(tk.Canvas):
         )
          
         renderer.draw_all()
+    
+    def draw_route(self, route: list, color="#00ff00", width=4):
+        """
+        Dibuja una ruta sobre el mapa existente con mejoras visuales.
+        
+        Args:
+            route: Lista de IDs de estrellas en orden [1, 3, 5, ...]
+            color: Color de la ruta (por defecto verde brillante)
+            width: Grosor de la línea
+        """
+        if not route or len(route) < 2:
+            return
+        
+        # Eliminar rutas anteriores (si existen)
+        self.delete("route")
+        
+        # Dibujar líneas conectando las estrellas de la ruta
+        for i in range(len(route) - 1):
+            star_id_from = route[i]
+            star_id_to = route[i + 1]
+            
+            # Obtener coordenadas de las estrellas
+            if star_id_from not in self.star_map or star_id_to not in self.star_map:
+                continue
+            
+            star_from = self.star_map[star_id_from]
+            star_to = self.star_map[star_id_to]
+            
+            # Escalar coordenadas
+            x1, y1 = self._scale_coords(star_from["coordenates"]["x"], star_from["coordenates"]["y"])
+            x2, y2 = self._scale_coords(star_to["coordenates"]["x"], star_to["coordenates"]["y"])
+            
+            # Dibujar sombra (línea más gruesa oscura detrás)
+            self.create_line(
+                x1, y1, x2, y2,
+                fill="#003300",  # Verde oscuro para sombra
+                width=width + 2,
+                tags="route"
+            )
+            
+            # Dibujar línea principal
+            self.create_line(
+                x1, y1, x2, y2,
+                fill=color,
+                width=width,
+                arrow="last",  # Flecha al final
+                arrowshape=(16, 20, 6),  # Flecha más grande
+                tags="route"
+            )
+        
+        # Resaltar estrellas de la ruta con números y nombres
+        for i, star_id in enumerate(route):
+            if star_id not in self.star_map:
+                continue
+            
+            star = self.star_map[star_id]
+            x, y = self._scale_coords(star["coordenates"]["x"], star["coordenates"]["y"])
+            
+            # Color especial para la primera y última estrella
+            if i == 0:
+                circle_color = "#00ff00"  # Verde brillante (inicio)
+                text_color = "#00ff00"
+            elif i == len(route) - 1:
+                circle_color = "#ff0000"  # Rojo (fin)
+                text_color = "#ff0000"
+            else:
+                circle_color = "#ffff00"  # Amarillo (intermedio)
+                text_color = "#ffff00"
+            
+            # Dibujar círculo resaltado
+            radius = 18
+            self.create_oval(
+                x - radius, y - radius,
+                x + radius, y + radius,
+                outline=circle_color,
+                width=4,
+                tags="route"
+            )
+            
+            # Dibujar número de orden (más grande)
+            self.create_text(
+                x, y - 30,
+                text=str(i + 1),
+                fill=text_color,
+                font=("Arial", 16, "bold"),
+                tags="route"
+            )
+            
+            # Dibujar nombre de la estrella debajo
+            star_name = star.get("label", f"Star {star_id}")
+            self.create_text(
+                x, y + 30,
+                text=star_name,
+                fill="#ffffff",
+                font=("Arial", 10, "bold"),
+                tags="route"
+            )
+    
+    def clear_route(self):
+        """Elimina la ruta dibujada del canvas"""
+        self.delete("route")
+
+    def draw_donkey(self, star_id:int):
+        """
+        Dibuja el ícono del burro en la estrella dada.
+        Args:
+            star_id: ID de la estrella donde dibujar el burro
+        """
+        #Eliminar el burro anterior
+        self.delete("donkey")
+
+        if star_id not in self.star_map:
+            return
+
+        star = self.star_map[star_id]
+        x, y = self._scale_coords(star["coordenates"]["x"], star["coordenates"]["y"])
+
+        #Por ahora dibuja un burro simple
+        radius = 25
+        self.create_oval(
+            x - radius, y - radius,
+            x + radius, y + radius,
+            fill="#8B4513",  # Marrón
+            outline="#5D2E0F",
+            width=3,
+            tags="donkey"
+        )
+        
+        # Emoji del burro
+        self.create_text(
+            x, y,
+            text="🐴",
+            font=("Arial", 30),
+            tags="donkey"
+        )
+        
+        # Etiqueta "BURRO AQUÍ"
+        self.create_text(
+            x, y - 45,
+            text="🐴 BURRO AQUÍ",
+            fill="#ffffff",
+            font=("Arial", 10, "bold"),
+            tags="donkey"
+        )
+    
+    def clear_donkey(self):
+        """Elimina el ícono del burro del canvas"""
+        self.delete("donkey")

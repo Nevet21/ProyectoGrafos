@@ -52,8 +52,8 @@ class Donkey:
         return max(0, self.death_age - self.current_age)
     
     def can_eat(self):
-        """Verifica si el burro puede comer (tiene menos del 50% de energía)"""
-        return self.energy < 50
+        """Verifica si el burro puede comer (tiene menos del 50% de energía Y está vivo)"""
+        return self.energy < 50 and self.is_alive()
     
     def eat(self, star_time_to_eat, max_time_available=None):
         """
@@ -74,6 +74,10 @@ class Donkey:
         
         # Energía por kg según estado de salud
         energy_per_kg = self.HEALTH_STATES[self.health_state]["energy_per_kg"]
+        
+        # Protección contra división por cero (si está muerto o moribundo sin energía)
+        if energy_per_kg == 0:
+            return {"kg_eaten": 0, "energy_gained": 0, "time_spent": 0}
         
         # Kilogramos necesarios
         kg_needed = energy_needed / energy_per_kg
@@ -222,12 +226,27 @@ class Donkey:
         """
         Usa el portal de una estrella hipergigante.
         Recarga 50% de energía y duplica el pasto.
+        
+        Returns:
+            dict con información del bonus aplicado
         """
+        old_energy = self.energy
+        old_grass = self.grass_kg
+        
         # Recargar 50% de la energía actual
         self.energy = min(100, self.energy * 1.5)
         
         # Duplicar pasto
         self.grass_kg *= 2
+        
+        return {
+            "energy_before": old_energy,
+            "energy_after": self.energy,
+            "energy_gained": self.energy - old_energy,
+            "grass_before": old_grass,
+            "grass_after": self.grass_kg,
+            "grass_gained": self.grass_kg - old_grass
+        }
     
     def _update_health_state(self):
         """Actualiza el estado de salud según la energía actual"""

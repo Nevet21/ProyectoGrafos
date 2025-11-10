@@ -1,0 +1,165 @@
+{
+  "burroenergiaInicial": 100,
+  "estadoSalud": "Excelente",
+  "pasto": 300,
+  "startAge": 12,
+  "deathAge": 500,
+  "constellations": [
+    {
+      "name": "Constelación Alpha",
+      "starts": [
+        {
+          "id": 1,
+          "label": "Alpha1-Inicio",
+          "radius": 3,
+          "timeToEat": 0.8,
+          "amountOfEnergy": 15,
+          "coordenates": {"x": 150, "y": 150},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 2, "distance": 15.0},
+            {"starId": 3, "distance": 50.0}
+          ]
+        },
+        {
+          "id": 2,
+          "label": "Alpha2-Portal1",
+          "radius": 4,
+          "timeToEat": 0.5,
+          "amountOfEnergy": 20,
+          "coordenates": {"x": 250, "y": 200},
+          "hypergiant": true,
+          "linkedTo": [
+            {"starId": 1, "distance": 15.0},
+            {"starId": 3, "distance": 20.0}
+          ]
+        },
+        {
+          "id": 3,
+          "label": "Alpha3-Destino",
+          "radius": 3,
+          "timeToEat": 1.2,
+          "amountOfEnergy": 18,
+          "coordenates": {"x": 350, "y": 150},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 1, "distance": 50.0},
+            {"starId": 2, "distance": 20.0},
+            {"starId": 4, "distance": 18.0},
+            {"starId": 5, "distance": 45.0}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Constelación Beta",
+      "starts": [
+        {
+          "id": 3,
+          "label": "Beta1-Compartida",
+          "radius": 3,
+          "timeToEat": 1.2,
+          "amountOfEnergy": 18,
+          "coordenates": {"x": 350, "y": 150},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 1, "distance": 50.0},
+            {"starId": 2, "distance": 20.0},
+            {"starId": 4, "distance": 18.0},
+            {"starId": 5, "distance": 45.0}
+          ]
+        },
+        {
+          "id": 4,
+          "label": "Beta2-Peligrosa",
+          "radius": 3,
+          "timeToEat": 2.0,
+          "amountOfEnergy": 12,
+          "coordenates": {"x": 450, "y": 200},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 3, "distance": 18.0},
+            {"starId": 5, "distance": 22.0}
+          ]
+        },
+        {
+          "id": 5,
+          "label": "Beta3-Portal2",
+          "radius": 4,
+          "timeToEat": 0.3,
+          "amountOfEnergy": 25,
+          "coordenates": {"x": 550, "y": 150},
+          "hypergiant": true,
+          "linkedTo": [
+            {"starId": 3, "distance": 45.0},
+            {"starId": 4, "distance": 22.0},
+            {"starId": 6, "distance": 12.0},
+            {"starId": 7, "distance": 10.0},
+            {"starId": 8, "distance": 40.0}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Constelación Gamma",
+      "starts": [
+        {
+          "id": 5,
+          "label": "Gamma1-Portal2",
+          "radius": 4,
+          "timeToEat": 0.3,
+          "amountOfEnergy": 25,
+          "coordenates": {"x": 550, "y": 150},
+          "hypergiant": true,
+          "linkedTo": [
+            {"starId": 3, "distance": 45.0},
+            {"starId": 4, "distance": 22.0},
+            {"starId": 6, "distance": 12.0},
+            {"starId": 7, "distance": 10.0},
+            {"starId": 8, "distance": 40.0}
+          ]
+        },
+        {
+          "id": 6,
+          "label": "Gamma2-Sanadora",
+          "radius": 3,
+          "timeToEat": 0.6,
+          "amountOfEnergy": 22,
+          "coordenates": {"x": 650, "y": 200},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 5, "distance": 12.0},
+            {"starId": 8, "distance": 15.0}
+          ]
+        },
+        {
+          "id": 7,
+          "label": "Gamma3-Cercana",
+          "radius": 3,
+          "timeToEat": 0.9,
+          "amountOfEnergy": 16,
+          "coordenates": {"x": 600, "y": 100},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 5, "distance": 10.0},
+            {"starId": 8, "distance": 20.0}
+          ]
+        },
+        {
+          "id": 8,
+          "label": "Gamma4-Final",
+          "radius": 3,
+          "timeToEat": 1.0,
+          "amountOfEnergy": 20,
+          "coordenates": {"x": 750, "y": 150},
+          "hypergiant": false,
+          "linkedTo": [
+            {"starId": 5, "distance": 40.0},
+            {"starId": 6, "distance": 15.0},
+            {"starId": 7, "distance": 20.0}
+          ]
+        }
+      ]
+    }
+  ]
+}

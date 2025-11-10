@@ -15,16 +15,23 @@ class ResearchConfigPanel:
     Permite modificar: tiempo, energía, efectos de salud y vida.
     """
     
-    def __init__(self, parent_frame, star_map):
+    def __init__(self, parent_frame, star_map, canvas=None, simulation_controller=None):
         """
         Inicializa el panel de configuración.
         
         Args:
             parent_frame: Frame padre donde se creará el panel
             star_map: Diccionario con información de todas las estrellas
+            canvas: Canvas donde se dibujará la ruta (opcional)
         """
         self.parent_frame = parent_frame
         self.star_map = star_map
+        self.canvas = canvas
+        self.simulation_controller = simulation_controller
+        
+        # Datos para el algoritmo (se cargarán después)
+        self.star_graph = None
+        self.donkey = None
         
         # Configuración actual {star_id: {params}}
         self.research_config = {}
@@ -41,11 +48,22 @@ class ResearchConfigPanel:
     def _init_default_config(self):
         """Inicializa la configuración por defecto para todas las estrellas"""
         for star_id in self.star_map.keys():
+            # Obtener el promedio de las distancias de las aristas de esta estrella
+            star_data = self.star_map[star_id]
+            linked_to = star_data.get("linkedTo", [])
+            
+            # Calcular promedio de distancias para las aristas
+            if linked_to:
+                avg_distance = sum(neighbor.get("distance", 0) for neighbor in linked_to) / len(linked_to)
+            else:
+                avg_distance = 0.0
+            
             self.research_config[star_id] = {
                 "research_time": 5.0,          # Tiempo de investigación
                 "energy_cost_per_time": 1.0,   # Energía por unidad de tiempo
                 "health_effect": 0,             # Cambio en salud (-2 a +2)
-                "life_effect": 0.0              # Años luz ganados(+) o perdidos(-)
+                "life_effect": 0.0,             # Años luz perdidos por investigación
+                "edge_distance": avg_distance   # Distancia promedio de aristas (años luz)
             }
     
     def _create_panel(self):
@@ -86,6 +104,36 @@ class ResearchConfigPanel:
         )
         self.config_button.pack(fill=tk.X, pady=5)
         
+        # Botón para calcular ruta óptima
+        self.calculate_route_button = tk.Button(
+            self.panel_frame,
+            text="🚀 Calcular Ruta Óptima",
+            command=self._calculate_optimal_route,
+            font=("Arial", 10, "bold"),
+            bg="#27ae60",
+            fg="white",
+            padx=20,
+            pady=8,
+            cursor="hand2",
+            state=tk.DISABLED  # Deshabilitado hasta que se cargue el JSON
+        )
+        self.calculate_route_button.pack(fill=tk.X, pady=5)
+
+        # Botón para limpiar ruta dibujada
+        self.clear_route_button = tk.Button(
+            self.panel_frame,
+            text="🗑️ Limpiar Ruta",
+            command=self._clear_route,
+            font=("Arial", 10),
+            bg="#e74c3c",  # Rojo
+            fg="white",
+            padx=20,
+            pady=8,
+            cursor="hand2",
+            state=tk.DISABLED  # Deshabilitado hasta calcular una ruta
+        )
+        self.clear_route_button.pack(fill=tk.X, pady=5)
+        
         # Label con resumen de configuración
         self.summary_label = tk.Label(
             self.panel_frame,
@@ -96,6 +144,20 @@ class ResearchConfigPanel:
             justify=tk.LEFT
         )
         self.summary_label.pack(anchor=tk.W, pady=(5, 0))
+    
+    def load_data(self, star_graph, donkey):
+        """
+        Carga los datos necesarios para calcular la ruta.
+        
+        Args:
+            star_graph: Grafo de estrellas
+            donkey: Instancia del burro
+        """
+        self.star_graph = star_graph
+        self.donkey = donkey
+        
+        # Habilitar el botón de calcular ruta
+        self.calculate_route_button.config(state=tk.NORMAL)
     
     def _get_config_summary(self) -> str:
         """
@@ -220,11 +282,12 @@ class ResearchConfigPanel:
             ("time", "Tiempo Invest.", 120),
             ("energy_cost", "Energía/Tiempo", 130),
             ("health_effect", "Efecto Salud", 120),
-            ("life_effect", "Efecto Vida", 120)
+            ("life_effect", "Efecto Vida", 120),
+            ("edge_distance", "Distancia Aristas", 140)
         ]
         
         # Columnas editables (no se puede editar ID ni nombre)
-        editable_columns = ["time", "energy_cost", "health_effect", "life_effect"]
+        editable_columns = ["time", "energy_cost", "health_effect", "life_effect", "edge_distance"]
         
         # Crear tabla editable
         self.editable_table = EditableTreeview(parent, columns, editable_columns)
@@ -244,7 +307,8 @@ class ResearchConfigPanel:
             "   • Tiempo: Unidades de tiempo invertidas en investigación\n"
             "   • Energía/Tiempo: % de energía consumida por unidad de tiempo\n"
             "   • Efecto Salud: -2=Muy malo, -1=Malo, 0=Neutral, +1=Bueno, +2=Muy bueno\n"
-            "   • Efecto Vida: Negativo=Gana años luz, Positivo=Pierde años luz"
+            "   • Efecto Vida: Años luz perdidos por investigación\n"
+            "   • Distancia Aristas: Años luz de viaje (modifica todas las aristas de la estrella)"
         )
         help_label = tk.Label(
             parent,
@@ -273,7 +337,8 @@ class ResearchConfigPanel:
                 f"{config['research_time']:.1f}",
                 f"{config['energy_cost_per_time']:.1f}",
                 config['health_effect'],
-                f"{config['life_effect']:.1f}"
+                f"{config['life_effect']:.1f}",
+                f"{config['edge_distance']:.1f}"
             )
             
             self.editable_table.insert_row(values, tags=(star_id,))
@@ -303,7 +368,7 @@ class ResearchConfigPanel:
             float_value = float(value)
             
             # Validaciones adicionales
-            if column_id in ["time", "energy_cost"] and float_value < 0:
+            if column_id in ["time", "energy_cost", "edge_distance"] and float_value < 0:
                 raise ValueError("El valor no puede ser negativo")
             
             return float_value
@@ -326,13 +391,149 @@ class ResearchConfigPanel:
             "time": "research_time",
             "energy_cost": "energy_cost_per_time",
             "health_effect": "health_effect",
-            "life_effect": "life_effect"
+            "life_effect": "life_effect",
+            "edge_distance": "edge_distance"
         }
         
         param_name = param_mapping.get(column_id)
         if param_name:
             # Actualizar configuración
             self.research_config[star_id][param_name] = new_value
+            
+            # Si se cambió la distancia de aristas, actualizar el mapa
+            if column_id == "edge_distance" and star_id in self.star_map:
+                self._update_edge_distances(star_id, new_value)
+            
+            # Redibujar el mapa para reflejar los cambios visuales
+            if self.canvas:
+                self.canvas.draw_map()
+    
+    def _update_edge_distances(self, star_id: int, edge_distance: float):
+        """
+        Actualiza las distancias de las aristas conectadas a una estrella
+        estableciendo exactamente el valor de edge_distance.
+        
+        Args:
+            star_id: ID de la estrella modificada
+            edge_distance: Nuevo valor para las distancias de las aristas
+        """
+        # Obtener los vecinos de esta estrella
+        star_data = self.star_map.get(star_id)
+        if not star_data:
+            return
+        
+        linked_to = star_data.get("linkedTo", [])
+        
+        # Asegurar que la distancia no sea negativa
+        new_distance = max(0.1, edge_distance)
+        
+        # Para cada vecino, actualizar la distancia
+        for neighbor in linked_to:
+            neighbor_id = neighbor.get("starId")
+            if neighbor_id not in self.star_map:
+                continue
+            
+            # Actualizar la distancia en la dirección: star_id -> neighbor_id
+            neighbor["distance"] = new_distance
+            
+            # También actualizar la arista inversa (neighbor_id -> star_id)
+            neighbor_star = self.star_map.get(neighbor_id)
+            if neighbor_star:
+                neighbor_links = neighbor_star.get("linkedTo", [])
+                for link in neighbor_links:
+                    if link.get("starId") == star_id:
+                        link["distance"] = new_distance
+                        break
+    
+    def _calculate_optimal_route(self):
+        """Calcula la ruta óptima usando la configuración actual"""
+        from tkinter import simpledialog
+        from ..algorithms.optimal_route_finder import OptimalRouteFinder
+
+        #Verifica si tenemos los datos necesarios
+        if self.star_graph is None or self.donkey is None:
+            messagebox.showerror(
+                "Error",
+                "No se ha cargado un JSON"
+            )
+            return
+        
+        # Pedir estrellas de inicio
+        star_ids = list(self.star_map.keys())
+        star_names = [f"{sid} - {self.star_map[sid]['name']}" for sid in star_ids]
+
+        start_star_input = simpledialog.askstring(
+            "Estrella de Inicio",
+            f"Ingresa el ID de la estrella inicial:\n\n"
+            f"Estrellas disponibles:\n" + "\n".join(star_names[:10]) + "\n..."
+        )
+
+        if not start_star_input:
+           return  # Cancelado
+
+        try:
+            start_star_id = int(start_star_input)
+        except ValueError:
+            messagebox.showerror("Error", "Debes ingresar un número válido")
+            return
+
+        if start_star_id not in star_ids:
+            messagebox.showerror("Error", f"La estrella {start_star_id} no existe en el grafo")
+            return
+        
+        # Crear instancia del buscador de rutas
+        finder = OptimalRouteFinder(self.star_graph, self.star_map)
+
+        # Calcular la ruta óptima con la configuración
+        result = finder.calculate_optimal_route(
+            start_star_id,
+            self.donkey,
+            self.research_config
+        )
+
+        # Mostrar resultado
+        if result["success"]:
+            route_str = " → ".join(map(str, result["route"]))
+            
+            # Dibujar la ruta en el canvas ANTES de mostrar el mensaje
+            if self.canvas:
+                self.canvas.draw_route(result["route"])
+
+                # Cargar simulación en el controlador
+                if self.simulation_controller:
+                    self.simulation_controller.load_simulation(
+                        result["simulation_steps"],
+                        result["route"],
+                        self.star_graph,  # Pasar el grafo
+                        self.research_config  # Pasar la configuración
+                    )
+
+                # Habilitar botón de limpiar ruta
+                self.clear_route_button.config(state=tk.NORMAL)
+            
+            messagebox.showinfo(
+                "✅ Ruta Óptima Encontrada",
+                f"Estrellas visitadas: {result['total_stars_visited']}\n"
+                f"Ruta: {route_str}\n\n"
+                f"Energía gastada: {result['total_energy_spent']:.2f}%\n"
+                f"Energía final: {result['final_donkey_state']['energy']:.2f}%\n"
+                f"Burro vivo: {'Sí ✅' if result['final_donkey_state']['is_alive'] else 'No ❌'}"
+            )
+        else:
+            messagebox.showerror(
+                "❌ Error",
+                f"No se pudo calcular la ruta:\n{result['message']}"
+            )
+
+    def _clear_route(self):
+        """Limpia la ruta dibujada del canvas"""
+        if self.canvas:
+            self.canvas.clear_route()
+            self.clear_route_button.config(state=tk.DISABLED)
+            messagebox.showinfo(
+                "Ruta Limpiada",
+                "La ruta ha sido eliminada del mapa."
+            )
     
     def _reset_to_defaults(self):
         """Restaura todos los valores a sus valores por defecto"""
